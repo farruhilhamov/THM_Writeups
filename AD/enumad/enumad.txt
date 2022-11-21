@@ -1,0 +1,15 @@
+Requesting Your Credentials
+
+To simulate an AD breach, you will be provided with your first set of AD credentials. Once your networking setup has been completed, on your Attack Box, navigate to http://distributor.za.tryhackme.com/creds to request your credential pair. Click the "Get Credentials" button to receive your credential pair that can be used for initial access.
+
+This credential pair will provide you RDP and SSH access to THMJMP1.za.tryhackme.com. THMJMP1 can be seen as a jump host into this environment, simulating a foothold that you have achieved. Jump hosts are often targeted by the red team since they provide access to a new network segment. You can use Remmina or any other similar Remote Desktop client to connect to this host for RDP. Remember to specify the domain of za.tryhackme.com when connecting. Task 2 and 3 will require RDP access.
+
+For SSH access, you can use the following SSH command:
+
+ssh za.tryhackme.com\\<AD Username>@thmjmp1.za.tryhackme.com
+
+When prompted, provide your account's associated password. Although RDP can be used for all tasks, SSH is faster and can be used for Task 4, 5, and 6.
+
+connectinfg via xfreerdp:
+
+xfreerdp /d:za.tryhackme.com /u:'user.name' /p:'password123' /v:thmjmp1.za.tryhackme.com /drive:.,kali-share +clipboard

