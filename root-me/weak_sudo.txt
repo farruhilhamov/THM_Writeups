@@ -1,0 +1,19 @@
+/bin/su
+/bin/umount
+/usr/lib/openssh/ssh-keysign
+/usr/lib/eject/dmcrypt-get-device
+/usr/lib/dbus-1.0/dbus-daemon-launch-helper
+/usr/bin/sudo
+/usr/bin/traceroute6.iputils
+/usr/sbin/pppd
+
+
+Matching Defaults entries for app-script-ch1 on challenge02:
+    env_reset, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin, !mail_always,
+    !mail_badpass, !mail_no_host, !mail_no_perms, !mail_no_user
+
+User app-script-ch1 may run the following commands on challenge02:
+    (app-script-ch1-cracked) /bin/cat /challenge/app-script/ch1/notes/*
+
+
+sudo -u app-script-ch1-cracked /bin/cat /challenge/app-script/ch1/notes/*

